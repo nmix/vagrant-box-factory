@@ -1,0 +1,32 @@
+---
+- name: download node_exporter
+  unarchive:
+    src: https://github.com/prometheus/node_exporter/releases/download/v{{ version }}/node_exporter-{{ version }}.linux-amd64.tar.gz
+    dest: /tmp
+    mode: "u+x,g+x"
+    remote_src: yes
+
+- name: copy node_exporter to /usr/local/bin
+  copy:
+    src: /tmp/node_exporter-{{ version }}.linux-amd64/node_exporter
+    dest: /usr/local/bin
+    mode: '750'
+    remote_src: yes
+
+# https://github.com/cimon-io/ansible-role-systemd-service
+- import_role:
+    name: cimon-io.systemd-service
+  vars:
+    systemd_service:
+      node_exporter:
+        description: "Node Exporter service"
+        enabled: yes
+        after: "network.target"
+        exec_start: /usr/local/bin/node_exporter
+        wanted_by: "multi-user.target"
+        type: "simple"
+
+- name: start service
+  service:
+    name: node_exporter
+    state: started

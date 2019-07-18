@@ -1,0 +1,23 @@
+---
+- name: download cadvisor
+  get_url:
+    url: https://github.com/google/cadvisor/releases/download/v{{ version }}/cadvisor
+    dest: /usr/local/bin
+    mode: "u+x,g+x"
+
+- import_role:
+    name: cimon-io.systemd-service
+  vars:
+    systemd_service:
+      cadvisor:
+        description: "CAdvisor service"
+        enabled: yes
+        after: "network.target"
+        exec_start: "/usr/local/bin/cadvisor -port 9180"
+        wanted_by: "multi-user.target"
+        type: "simple"
+
+- name: start service
+  service:
+    name: cadvisor
+    state: started

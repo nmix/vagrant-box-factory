@@ -1,0 +1,65 @@
+---
+- name: Ubuntu Server Provisioning
+  hosts: all
+  become: True
+  gather_facts: False
+
+  tasks:
+    - name: install python
+      raw: sudo apt install -y python
+
+    - setup:
+
+    - name: update apt cache
+      apt: update_cache=yes
+
+    - name: upgrade packages
+      apt: upgrade=dist
+
+    - name: install extra packages
+      apt:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - vim
+        - tmux
+        - mc
+        - git
+        - net-tools
+        - tree
+        - python3-pip
+        - python-setuptools
+
+    - name: install pip modules
+      pip:
+        name:
+          - simplejson
+          - docker-py
+
+    # --- https://github.com/geerlingguy/ansible-role-docker
+    - import_role:
+        name: geerlingguy.docker
+      vars:
+        docker_install_compose: true
+        docker_compose_version: "1.24.0"
+        docker_compose_path: /usr/local/bin/docker-compose
+
+    - name: capture docker version
+      command: docker version
+      register: docker_version
+
+    - debug:
+        msg: "{{ docker_version.stdout }}"
+
+    - name: capture docker-compose version
+      command: docker-compose --version
+      register: compose_version
+
+    - debug:
+        msg: "{{ compose_version.stdout }}"
+
+    - name: append ansible_user to the docker group
+      user:
+        name: "{{ ansible_user }}"
+        group: docker
+        append: yes

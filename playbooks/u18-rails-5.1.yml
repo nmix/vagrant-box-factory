@@ -1,0 +1,139 @@
+---
+- name: Ubuntu Server Provisioning
+  hosts: all
+  become: false
+  gather_facts: false
+
+  tasks:
+    - name: install python
+      raw: sudo apt install -y python python3-pip python-setuptools
+
+    - setup:
+
+    - name: install pip modules
+      become: true
+      pip:
+        name:
+          - simplejson
+
+    #
+    # Install Postgres
+    #
+
+    # https://github.com/geerlingguy/ansible-role-postgresql
+    - import_role:
+        name: geerlingguy.postgresql
+      vars:
+        postgresql_service_state: started
+        postgresql_service_enabled: true
+        postgresql_python_library: python3-psycopg2
+        postgresql_users:
+          - name: dbuser
+            password: dbpassword
+            role_attr_flags: SUPERUSER
+      become: true
+
+    #
+    # Install Redis
+    #
+    
+    # https://github.com/geerlingguy/ansible-role-redis
+    - import_role:
+        name: geerlingguy.redis
+      vars:
+        redis_port: 6379
+        redis_bind_interface: 127.0.0.1
+      become: true
+
+    #
+    # Install Ruby
+    #
+
+    # https://github.com/geerlingguy/ansible-role-ruby
+    - import_role:
+        name: geerlingguy.ruby
+      vars:
+        workspace: /home/vagrant
+        ruby_install_bundler: true
+        ruby_version: 2.5.1
+      become: true
+
+    - name: set dir attributes
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: 'u+rw'
+        recurse: yes
+      become: true
+      with_items:
+        - /var/lib/gems
+        - /usr/local/bin
+
+    #
+    # Install Rails
+    #
+
+    - name: install curl
+      apt:
+        name: curl
+      become: True
+
+    - name: install node
+      shell: curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
+      args:
+        warn: no
+
+    - name: add yarn pubkey
+      shell: curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
+      args:
+        warn: no
+
+    - name: update yarn apt respository
+      apt_repository:
+        repo: deb https://dl.yarnpkg.com/debian/ stable main
+        state: present
+        filename: yarn
+      become: True
+
+    - name: update apt cache
+      apt: update_cache=yes
+      become: True
+
+    - name: upgrade packages
+      apt: upgrade=dist
+      become: True
+
+    - name: install extra packages
+      become: True
+      apt:
+        name: "{{ packages }}"
+      vars:
+        packages:
+        - vim
+        - tmux
+        - mc
+        - git-core
+        - net-tools
+        - tree
+        - zlib1g-dev
+        - build-essential
+        - libssl-dev
+        - libreadline-dev
+        - libyaml-dev
+        - libsqlite3-dev
+        - sqlite3
+        - libxml2-dev
+        - libxslt1-dev
+        - libcurl4-openssl-dev
+        - software-properties-common
+        - libffi-dev
+        - nodejs
+        - yarn
+
+    - name: install rails
+      gem:
+        name: rails
+        version: 5.1.5
+        state: present
