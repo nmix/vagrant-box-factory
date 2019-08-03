@@ -1,20 +1,33 @@
 ---
 - name: Ubuntu Server Provisioning
   hosts: all
-  become: false
-  gather_facts: false
+  become: True
+  gather_facts: False
+  vars:
+    ruby_version: 2.6.1
+    ruby_download_url: http://cache.ruby-lang.org/pub/ruby/2.6/ruby-2.6.1.tar.gz
+    bundler_version: 1.17.2
+    rails_version: 5.1.7
+    database_username: dbuser
+    database_password: dbpassword
+    redis_port: 6379
 
   tasks:
     - name: install python
-      raw: sudo apt install -y python python3-pip python-setuptools
+      raw: sudo apt update && sudo apt install -y python3 python3-pip python3-setuptools
 
     - setup:
 
     - name: install pip modules
-      become: true
       pip:
         name:
           - simplejson
+
+    - name: update apt cache
+      apt: update_cache=yes
+
+    - name: upgrade packages
+      apt: upgrade=dist
 
     #
     # Install Postgres
@@ -28,22 +41,19 @@
         postgresql_service_enabled: true
         postgresql_python_library: python3-psycopg2
         postgresql_users:
-          - name: dbuser
-            password: dbpassword
+          - name: "{{ database_username }}"
+            password: "{{ database_password }}"
             role_attr_flags: SUPERUSER
-      become: true
 
     #
     # Install Redis
     #
-    
+
     # https://github.com/geerlingguy/ansible-role-redis
     - import_role:
         name: geerlingguy.redis
       vars:
-        redis_port: 6379
         redis_bind_interface: 127.0.0.1
-      become: true
 
     #
     # Install Ruby
@@ -54,9 +64,11 @@
         name: geerlingguy.ruby
       vars:
         workspace: /home/vagrant
-        ruby_install_bundler: true
-        ruby_version: 2.5.1
-      become: true
+        ruby_install_from_source: true
+        ruby_install_bundler: false
+
+    - name: install bundler
+      shell: "gem install bundler -v {{ bundler_version }}"
 
     - name: set dir attributes
       file:
@@ -66,7 +78,6 @@
         group: vagrant
         mode: 'u+rw'
         recurse: yes
-      become: true
       with_items:
         - /var/lib/gems
         - /usr/local/bin
@@ -78,7 +89,6 @@
     - name: install curl
       apt:
         name: curl
-      become: True
 
     - name: install node
       shell: curl -sL https://deb.nodesource.com/setup_12.x | sudo -E bash -
@@ -95,18 +105,8 @@
         repo: deb https://dl.yarnpkg.com/debian/ stable main
         state: present
         filename: yarn
-      become: True
-
-    - name: update apt cache
-      apt: update_cache=yes
-      become: True
-
-    - name: upgrade packages
-      apt: upgrade=dist
-      become: True
 
     - name: install extra packages
-      become: True
       apt:
         name: "{{ packages }}"
       vars:
@@ -135,5 +135,6 @@
     - name: install rails
       gem:
         name: rails
-        version: 5.1.5
+        version: "{{ rails_version }}"
         state: present
+      become: False
