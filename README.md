@@ -28,7 +28,9 @@ end
 git clone http://gitlab.isoit.ru/zoid/vagrant-box-factory.git
 cd vagrant-box-factory
 # пакетирование машины в файл образа
+VAGRANT_VAGRANTFILE=Vagrantfile.u18-docker vagrant up
 VAGRANT_VAGRANTFILE=Vagrantfile.u18-docker vagrant package --output ubuntu-server-18.04-docker.box
+VAGRANT_VAGRANTFILE=Vagrantfile.u18-docker vagrant halt
 # добавление файла образа в систему
 vagrant box add ubuntu-server-18.04-docker ubuntu-server-18.04-docker.box
 # инициализация Vagrantfile
